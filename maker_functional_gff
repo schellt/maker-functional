@@ -50,7 +50,7 @@ while (my $line = <$IN>) {
 	}
 
 	my ($id) = $attrb =~ /ID\s*=\s*(.*?);/;
-
+	
 	my $note;
 	if ($blast->{$id}{note}) {
 		$note .= $blast->{$id}{note};
@@ -120,8 +120,8 @@ sub parse_blast{
 
 		my ($id, $desc, $org, $name);
 		#>sp|P18560|1101L_ASFB7 Protein MGF 110-1L OS=African swine fever virus (strain Badajoz 1971 Vero-adapted) GN=BA71V-008 PE=3 SV=1
-		if (/>(\S+)\s+(.*?)\s+OS=(.*?)\s+(GN=(.*?)\s+)?PE=/) {
-			$id   = $1;
+		if (/>(\S+)\s+(.*?)\s+OS=(.*?)\s+OX=.*?\s+(GN=(.*?)\s+)?PE=/) {
+			$id = (split(/\|/,$1))[1];
 			$desc = $2;
 			$org  = $3;
 			$name = $5 || '';
@@ -135,7 +135,7 @@ sub parse_blast{
 		$note .= "$name: "     if $name;
 		$note .= "$desc "      if $desc;
 		$note .= "($org)"      if $org;
-
+		
 		$fasta{$id}{note} = $note;
 
 		$fasta{$id}{name} = $name;
@@ -143,7 +143,7 @@ sub parse_blast{
 		print '';
 	}
 	close $IN;
-
+	
 	open($IN, '<', $blast_file) or
 	  die "Can't open $blast_file for reading\n$!\n";
 
@@ -151,7 +151,7 @@ sub parse_blast{
 	while (<$IN>) {
 	        my @F = split;
 		my ($qid, $sid, $e_val) = (@F == 12 && $F[3] =~ /^\d+$/) ? (@F[0..1],$F[10]) : @F[0..2];
-
+		
 		if (! $seen{$qid}) {
 			$blast{$qid} = $fasta{$sid} || '';
 			$seen{$qid}++;

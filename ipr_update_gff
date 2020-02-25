@@ -107,10 +107,17 @@ while (my $line = <$IN>) {
 	$ontology_text .= join ',', @go_terms;
 	$ontology_text .= ';';
     }
-    
+   
+    my $date_text = '';
+    if ($ipr->{$id}{date}) {
+	$date_text = '_IPRDate=';
+	my $date = $ipr->{$id}{date};
+	$date_text .= $date . ";";
+    }
+ 
     $line =~ s/;$//;
     $line .= ';';
-    $line .= "$db_xref_text$ontology_text";
+    $line .= "$db_xref_text$ontology_text$date_text";
     print $OUT "$line\n";
 }
 
@@ -172,7 +179,13 @@ sub parse_ipr_scan {
 	
 	my ($seq_id, $crc_chksm, $aa_len, $method, $db_id, $db_desc,
 	    $start, $end, $e_val, $status, $date, $ipr_id,
-	    $ipr_desc, $go_text) = split /\t/, $_;
+	    $ipr_desc, $go_text, $pathway) = split /\t/, $_;
+	
+	if(defined($pathway)){
+		chomp $pathway;
+		$pathway =~ s/Reactome: //g;
+		$pathway =~ s/\|/,Reactome:/g;
+	}
 	
 	if($tab2go){
 	    my ($seq_id, undef, undef, undef, $go_text) = split /[\t\s]+/, $_;
@@ -184,23 +197,41 @@ sub parse_ipr_scan {
 	    map {$ipr{$gene_id}{go}{$_}++} @go_ids;
 	}
 	else{
-	    next if grep {$method eq $_} qw(Seg Coil SignalPHMM TMHMM SignalP);
+	    next if grep {$method eq $_} qw(Seg Coils SignalPHMM TMHMM SignalP Phobius MobiDBLite);
 	    
 	    $method = $db_map{$method} || $method;
 	    
 	    push @{$ipr{$seq_id}{dbxref}{$method}}, {id   => $db_id,
 						     desc => $db_desc};
+	    #push @{$ipr{$seq_id}{dbxref}{"Date"}}, {id   => $date};
+	    if(defined($pathway)){
+		push @{$ipr{$seq_id}{dbxref}{"Reactome"}}, {id   => $pathway};
+	    }
 	    push @{$ipr{$seq_id}{dbxref}{InterPro}}, {id   => $ipr_id,
 						      desc => $ipr_desc};
-		   
+	    
+	    if(defined($date)){
+		    chomp $date;
+		    $ipr{$seq_id}{date} = $date;
+	    }
+	    	   
 	    my @go_ids = $go_text =~ /(GO:\d+)/g unless(! $go_text);
 	    map {$ipr{$seq_id}{go}{$_}++} @go_ids;	   
 	    
 	    my $gene_id = $gene_map->{$seq_id};
 	    push @{$ipr{$gene_id}{dbxref}{$method}}, {id   => $db_id,
 						      desc => $db_desc};
+	    if(defined($pathway)){
+		push @{$ipr{$gene_id}{dbxref}{"Reactome"}}, {id   => $pathway};
+	    }
 	    push @{$ipr{$gene_id}{dbxref}{InterPro}}, {id   => $ipr_id,
 						       desc => $ipr_desc};
+	    
+	    if(defined($date)){
+		chomp $date;
+		$ipr{$gene_id}{date} = $date;
+	    }
+	    
 	    map {$ipr{$gene_id}{go}{$_}++} @go_ids;
 	}
     }
